@@ -162,6 +162,18 @@ optionally raises): success path commits the row; exception path leaves **no** r
 session is closed either way. This is the fix that closes the foundation review's partial-write
 gap — the pack-purchase rollback is then verified end-to-end in Task 7.
 
+**Test technique — use `get_db` itself, do not duplicate it.** `get_db`'s `SessionLocal()` call
+resolves `app.db.SessionLocal` as a module global at call time. To exercise the *real,
+unmodified* `get_db` against the test database, `monkeypatch.setattr` a test-scoped
+`sessionmaker(bind=<test engine>)` onto `app.db.SessionLocal` for the duration of the test, then
+wire the throwaway route's dependency as `Depends(get_db)` — the real import, not a copy. This
+is the only design that actually fails if someone deletes the commit/rollback logic from
+`app/db.py`; a hand-copied duplicate of the function does not test the function. Verify commit
+and rollback from an **independent** session (e.g. `session_factory`), and verify closure with a
+real spy (`mocker.spy(Session, "close")` from `sqlalchemy.orm`, asserting `call_count >= 1` for
+each path) — asserting only `status_code == 200` proves nothing about closure, since SQLAlchemy
+`Session.close()` doesn't prevent further use of the object anyway.
+
 ### Task 2 — DB hardening migration (FK indexes + wallet CHECK)
 **Files:** create `alembic/versions/0002_indexes_and_wallet_check.py`; test
 `tests/test_db_constraints.py`.
