@@ -829,6 +829,16 @@ git commit -m "feat(backend): add SQLAlchemy models and initial Alembic migratio
   `InsufficientBalanceError`, all in `app.services.ledger_service`. Test fixtures `engine`,
   `db_session`, `session_factory` in `tests/conftest.py`, reused by all later test files.
 
+**Invariant every later task must preserve:** `get_balance` always recomputes from
+`ledger_entries` (the source of truth, per Global Constraints) — it never reads
+`wallet_balance_cached` directly. `append_entry` separately uses `wallet_balance_cached` internally,
+under the same `SELECT ... FOR UPDATE` row lock as the balance check, purely as the fast
+locked-mutation target — the two stay consistent only because **every** balance-affecting write,
+including test setup, goes through `append_entry`. Never set `wallet_balance_cached` directly
+(not in application code, not in test fixtures, not in later tasks) — seed a starting balance with
+a real `append_entry(..., entry_type=LedgerEntryType.admin_adjustment, ...)` call instead, exactly
+as `_make_user` below does.
+
 - [ ] **Step 1: Write the test fixtures**
 
 `backend/tests/conftest.py`:
@@ -890,9 +900,17 @@ from app.services.ledger_service import InsufficientBalanceError, append_entry, 
 
 
 def _make_user(db_session, email="ledger@example.com", balance=0) -> User:
-    user = User(email=email, display_name="Ledger Test", wallet_balance_cached=balance)
+    user = User(email=email, display_name="Ledger Test", wallet_balance_cached=0)
     db_session.add(user)
     db_session.flush()
+    if balance:
+        append_entry(
+            db_session,
+            user_id=user.id,
+            entry_type=LedgerEntryType.admin_adjustment,
+            amount=balance,
+            idempotency_key=f"seed-{user.id}",
+        )
     return user
 
 
@@ -1806,8 +1824,9 @@ import threading
 import pytest
 from sqlalchemy import select
 
-from app.models import Pull, User
-from app.services.ledger_service import get_balance
+from app.models import Game, LedgerEntry, OddsBand, OddsTable, Pack, PackType, Pull, User
+from app.models.enums import LedgerEntryType
+from app.services.ledger_service import append_entry, get_balance
 from app.services.pack_service import (
     PackNotFoundError,
     PackTypeUnavailableError,
@@ -1817,9 +1836,17 @@ from app.services.pack_service import (
 
 
 def _make_user(db_session, email="packs@example.com", balance=10_000) -> User:
-    user = User(email=email, display_name="Pack Test", wallet_balance_cached=balance)
+    user = User(email=email, display_name="Pack Test", wallet_balance_cached=0)
     db_session.add(user)
     db_session.flush()
+    if balance:
+        append_entry(
+            db_session,
+            user_id=user.id,
+            entry_type=LedgerEntryType.admin_adjustment,
+            amount=balance,
+            idempotency_key=f"seed-{user.id}",
+        )
     return user
 
 
@@ -1934,15 +1961,60 @@ def test_open_pack_raises_for_nonexistent_pack(db_session, basic_odds_setup):
         open_pack(db_session, user_id=user.id, pack_id=uuid.uuid4())
 
 
-def test_concurrent_open_pack_only_rolls_once(db_session, session_factory, basic_odds_setup):
-    user = _make_user(db_session, email="opener@example.com")
-    db_session.commit()
-    user_id = user.id
-    pack_type_id = basic_odds_setup["pack_type"].id
+def test_concurrent_open_pack_only_rolls_once(session_factory):
+    # This test deliberately does NOT use the `basic_odds_setup`/`db_session` fixtures: those
+    # build rows inside a savepoint-scoped transaction that is never really committed, so a
+    # session from `session_factory()` (a genuinely separate connection, exactly what the
+    # concurrent threads below use) can never see them. Every row this test depends on must be
+    # created and committed for real, via `session_factory()`, from the start.
+    setup_session = session_factory()
+    try:
+        pack_type = PackType(name="ConcurrentTest", price=1000, description="")
+        setup_session.add(pack_type)
+        setup_session.flush()
 
-    pack = purchase_pack(db_session, user_id=user_id, pack_type_id=pack_type_id, idempotency_key="buy-8")
-    db_session.commit()
-    pack_id = pack.id
+        odds_table = OddsTable(pack_type_id=pack_type.id, version=1, is_published=True)
+        setup_session.add(odds_table)
+        setup_session.flush()
+
+        band = OddsBand(
+            odds_table_id=odds_table.id,
+            name="Common",
+            probability=1.0,
+            min_price=100,
+            max_price=10_000,
+            sort_order=0,
+        )
+        setup_session.add(band)
+
+        game = Game(steam_app_id=900099, title="Concurrency Test Game", regular_price=500, header_image_url=None)
+        setup_session.add(game)
+        setup_session.flush()
+
+        user = User(email="opener@example.com", display_name="Pack Test", wallet_balance_cached=0)
+        setup_session.add(user)
+        setup_session.flush()
+        append_entry(
+            setup_session,
+            user_id=user.id,
+            entry_type=LedgerEntryType.admin_adjustment,
+            amount=10_000,
+            idempotency_key=f"seed-{user.id}",
+        )
+
+        pack = purchase_pack(
+            setup_session, user_id=user.id, pack_type_id=pack_type.id, idempotency_key="buy-8"
+        )
+        setup_session.commit()
+
+        user_id = user.id
+        pack_id = pack.id
+        pack_type_id = pack_type.id
+        odds_table_id = odds_table.id
+        band_id = band.id
+        game_id = game.id
+    finally:
+        setup_session.close()
 
     errors: list[Exception] = []
     results: list = []
@@ -1967,12 +2039,22 @@ def test_concurrent_open_pack_only_rolls_once(db_session, session_factory, basic
     assert errors == []
     assert len(set(results)) == 1  # every thread observed the SAME pull
 
-    verify = session_factory()()
+    cleanup_session = session_factory()
     try:
-        pulls = verify.scalars(select(Pull).where(Pull.pack_id == pack_id)).all()
+        pulls = cleanup_session.scalars(select(Pull).where(Pull.pack_id == pack_id)).all()
         assert len(pulls) == 1
+
+        cleanup_session.query(Pull).filter(Pull.pack_id == pack_id).delete()
+        cleanup_session.query(Pack).filter(Pack.id == pack_id).delete()
+        cleanup_session.query(LedgerEntry).filter(LedgerEntry.user_id == user_id).delete()
+        cleanup_session.query(User).filter(User.id == user_id).delete()
+        cleanup_session.query(OddsBand).filter(OddsBand.id == band_id).delete()
+        cleanup_session.query(OddsTable).filter(OddsTable.id == odds_table_id).delete()
+        cleanup_session.query(PackType).filter(PackType.id == pack_type_id).delete()
+        cleanup_session.query(Game).filter(Game.id == game_id).delete()
+        cleanup_session.commit()
     finally:
-        verify.close()
+        cleanup_session.close()
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
