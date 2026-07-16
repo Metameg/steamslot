@@ -53,3 +53,18 @@ def test_expected_value_below_pack_price(db_session, basic_odds_setup):
     # 0.70*300 + 0.25*900 + 0.05*5000 = 210 + 225 + 250 = 685
     assert ev == pytest.approx(685, abs=1)
     assert ev < pack_type.price
+
+
+def test_expected_value_renormalizes_when_a_band_has_no_eligible_games(db_session, basic_odds_setup):
+    # Mirrors test_roll_excludes_empty_band_and_renormalizes: expected_value() must exclude an
+    # empty band and re-weight the remainder exactly as roll() does, not silently understate EV
+    # by leaving the empty band's probability mass out of total_weight entirely.
+    bands = basic_odds_setup["bands"]
+    common_game = db_session.query(Game).filter_by(title="Cheap Game").one()
+    common_game.is_eligible = False
+    db_session.flush()
+
+    ev = expected_value(db_session, bands)
+    # Common (0.70) excluded; Rare (0.25, avg 900) and Grail (0.05, avg 5000) re-normalize over
+    # total_weight=0.30: (0.25/0.30)*900 + (0.05/0.30)*5000 = 750 + 833.33... = 1583.33...
+    assert ev == pytest.approx(1583.33, abs=1)

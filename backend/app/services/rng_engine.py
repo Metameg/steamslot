@@ -61,15 +61,23 @@ def roll(db: Session, bands: list[OddsBand]) -> RollResult:
 
 
 def expected_value(db: Session, bands: list[OddsBand]) -> float:
-    """Average payout per pack if every band's published odds hold as stocked right now."""
-    total_weight = sum(float(band.probability) for band in bands)
+    """Average payout per pack given roll()'s actual behavior: bands with no eligible
+    games are excluded and the remaining bands' weights re-normalized, exactly as roll() does.
+    total_weight MUST be computed only over bands that have an eligible game -- computing it over
+    all input bands (then skipping empty ones in the loop without adjusting the weight) silently
+    understates EV whenever any band is out of stock, defeating the one function whose job is to
+    prove the house edge holds."""
+    candidates: list[tuple[OddsBand, list[Game]]] = []
+    for band in bands:
+        games = eligible_games_for_band(db, band)
+        if games:
+            candidates.append((band, games))
+
+    total_weight = sum(float(band.probability) for band, _ in candidates)
     if total_weight == 0:
         return 0.0
     ev = 0.0
-    for band in bands:
-        games = eligible_games_for_band(db, band)
-        if not games:
-            continue
+    for band, games in candidates:
         avg_band_value = sum(g.regular_price for g in games) / len(games)
         ev += (float(band.probability) / total_weight) * avg_band_value
     return ev
