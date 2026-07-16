@@ -262,3 +262,24 @@ Produce the ER-diagram webpage, then move into a detailed implementation plan (s
 schema/migrations → auth → catalog+odds **seed scripts** → deposit → buy/open/RNG →
 buyback/redeem → withdrawal → reveal UX), each slice built and verified in order. No admin UI in
 this MVP scope.
+
+## Status: Backend Foundation Slice Complete
+
+The first implementation slice (`docs/superpowers/plans/2026-07-16-backend-foundation.md`) is
+built, reviewed, and merged: project scaffold, the full 11-table schema/migration, the ledger
+service, Steam catalog seeding (24 real games), the odds/RNG engine, and the pack purchase/open
+service. No auth, HTTP endpoints, or Stripe integration yet. The whole-branch final review passed
+("Ready to merge: Yes") with two **Important findings explicitly scoped to the next plan** rather
+than defects in this slice — carry these into whichever plan adds the HTTP/auth layer:
+
+1. **No indexes on foreign-key columns**, notably `ledger_entries.user_id` — `get_balance` does a
+   sequential scan over the whole ledger on every read. Add indexes (and a
+   `CHECK (wallet_balance_cached >= 0)` backstop constraint) in a follow-up migration before any
+   real load.
+2. **`purchase_pack` has no row lock** (unlike `open_pack`'s `SELECT ... FOR UPDATE`). A genuine
+   concurrent double-submit with the same idempotency key raises an `IntegrityError` instead of
+   idempotently returning the pack, and — combined with the still-open "request-scoped rollback"
+   gap below — a caller that doesn't roll back on failure could leave an unpaid `Pack` row.
+   **Fix this in the very first task of the next plan**: build the FastAPI `get_db` dependency to
+   roll back the session on any unhandled exception *before* wiring `purchase_pack`/`open_pack` to
+   real routes — this closes both the rollback gap and the `purchase_pack` race at once.
