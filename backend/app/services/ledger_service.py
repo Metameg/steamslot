@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import LedgerEntry, User
@@ -12,11 +12,15 @@ class InsufficientBalanceError(Exception):
 
 
 def get_balance(db: Session, user_id: uuid.UUID) -> int:
-    # wallet_balance_cached is maintained transactionally by append_entry under a
-    # row lock on the user row, so it is authoritative for the current balance;
-    # ledger_entries remains the immutable, append-only audit trail of how it got there.
-    user = db.execute(select(User).where(User.id == user_id)).scalar_one()
-    return int(user.wallet_balance_cached)
+    # ledger_entries is the source of truth for balances (append-only, auditable,
+    # self-healing). wallet_balance_cached exists only as append_entry's own
+    # row-locked mutation target, kept in lockstep with every ledger insert — it is
+    # never read here, so get_balance always reflects the immutable ledger, not a
+    # second, potentially-divergent cache.
+    total = db.execute(
+        select(func.coalesce(func.sum(LedgerEntry.amount), 0)).where(LedgerEntry.user_id == user_id)
+    ).scalar_one()
+    return int(total)
 
 
 def append_entry(

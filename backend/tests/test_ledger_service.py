@@ -8,9 +8,17 @@ from app.services.ledger_service import InsufficientBalanceError, append_entry, 
 
 
 def _make_user(db_session, email="ledger@example.com", balance=0) -> User:
-    user = User(email=email, display_name="Ledger Test", wallet_balance_cached=balance)
+    user = User(email=email, display_name="Ledger Test", wallet_balance_cached=0)
     db_session.add(user)
     db_session.flush()
+    if balance:
+        append_entry(
+            db_session,
+            user_id=user.id,
+            entry_type=LedgerEntryType.admin_adjustment,
+            amount=balance,
+            idempotency_key=f"seed-{user.id}",
+        )
     return user
 
 
