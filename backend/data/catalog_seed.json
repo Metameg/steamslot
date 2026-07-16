@@ -1,0 +1,170 @@
+[
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1794680/2ca07b690dde645771125ed9d9206c4c5fde4dd4/header.jpg?t=1781096909",
+    "regular_price": 499,
+    "steam_app_id": 1794680,
+    "title": "Vampire Survivors"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/945360/header.jpg?t=1781287930",
+    "regular_price": 499,
+    "steam_app_id": 945360,
+    "title": "Among Us"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/620/header.jpg?t=1745363004",
+    "regular_price": 999,
+    "steam_app_id": 620,
+    "title": "Portal 2"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/105600/header.jpg?t=1769844435",
+    "regular_price": 999,
+    "steam_app_id": 105600,
+    "title": "Terraria"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2379780/7a85430784e4d613cdb0547414d8cf16ffa45747/header.jpg?t=1781540048",
+    "regular_price": 1499,
+    "steam_app_id": 2379780,
+    "title": "Balatro"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg?t=1754692865",
+    "regular_price": 1499,
+    "steam_app_id": 413150,
+    "title": "Stardew Valley"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/367520/3c3489495136b26b34f8a9543c7f5645b99d388c/header.jpg?t=1776125684",
+    "regular_price": 1499,
+    "steam_app_id": 367520,
+    "title": "Hollow Knight"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg?t=1758127023",
+    "regular_price": 2499,
+    "steam_app_id": 1145360,
+    "title": "Hades"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/504230/header.jpg?t=1714089525",
+    "regular_price": 1999,
+    "steam_app_id": 504230,
+    "title": "Celeste"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/268910/header.jpg?t=1709068852",
+    "regular_price": 1999,
+    "steam_app_id": 268910,
+    "title": "Cuphead"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1092790/header.jpg?t=1777572925",
+    "regular_price": 1999,
+    "steam_app_id": 1092790,
+    "title": "Inscryption"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/646570/header.jpg?t=1774015376",
+    "regular_price": 2499,
+    "steam_app_id": 646570,
+    "title": "Slay the Spire"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/588650/header.jpg?t=1779086887",
+    "regular_price": 2499,
+    "steam_app_id": 588650,
+    "title": "Dead Cells"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/753640/079ae4a7ff4b5875adc5c63c4c0b84e5a3e6966b/header.jpg?t=1779137571",
+    "regular_price": 2499,
+    "steam_app_id": 753640,
+    "title": "Outer Wilds"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/292030/ad9240e088f953a84aee814034c50a6a92bf4516/header.jpg?t=1768303991",
+    "regular_price": 3999,
+    "steam_app_id": 292030,
+    "title": "The Witcher 3: Wild Hunt"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632470/816ea59d6d8ac525f79a07c3a7afa94eddb3437c/header.jpg?t=1780913406",
+    "regular_price": 3999,
+    "steam_app_id": 632470,
+    "title": "Disco Elysium - The Final Cut"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/427520/header.jpg?t=1763986204",
+    "regular_price": 3500,
+    "steam_app_id": 427520,
+    "title": "Factorio"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/294100/76e0613b8197327299d5dbabb0a7fd7828a689a2/header.jpg?t=1782756789",
+    "regular_price": 3499,
+    "steam_app_id": 294100,
+    "title": "RimWorld"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/553420/header.jpg?t=1783359656",
+    "regular_price": 2999,
+    "steam_app_id": 553420,
+    "title": "TUNIC"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1767883716",
+    "regular_price": 5999,
+    "steam_app_id": 1245620,
+    "title": "ELDEN RING"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/e9047d8ec47ae3d94bb8b464fb0fc9e9972b4ac7/header.jpg?t=1769690377",
+    "regular_price": 5999,
+    "steam_app_id": 1091500,
+    "title": "Cyberpunk 2077"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1086940/48a2fcbda8565bb45025e98fd8ebde8a7203f6a0/header.jpg?t=1777363040",
+    "regular_price": 5999,
+    "steam_app_id": 1086940,
+    "title": "Baldur's Gate 3"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg?t=1759502961",
+    "regular_price": 5999,
+    "steam_app_id": 1174180,
+    "title": "Red Dead Redemption 2"
+  },
+  {
+    "currency": "USD",
+    "header_image_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/814380/header.jpg?t=1762888662",
+    "regular_price": 5999,
+    "steam_app_id": 814380,
+    "title": "Sekiro\u2122: Shadows Die Twice - GOTY Edition"
+  }
+]
