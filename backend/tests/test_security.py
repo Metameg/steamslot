@@ -32,6 +32,11 @@ class TestPasswordHashing:
         hashed = hash_password(pw)
         assert verify_password("wrong_password", hashed) is False
 
+    def test_verify_password_returns_false_for_malformed_hash(self):
+        """Verify password should return False for malformed/corrupted hash."""
+        # Test with a string that's not a valid argon2 hash
+        assert verify_password("anything", "not-a-valid-argon2-hash") is False
+
 
 class TestTokens:
     """Tests for session token generation and hashing."""
@@ -50,6 +55,8 @@ class TestTokens:
         assert len(hashed) == 64
         # Verify it's a valid hex string
         assert all(c in "0123456789abcdef" for c in hashed)
+        # Verify hash differs from plaintext token
+        assert hashed != token
 
     def test_generate_session_token_returns_distinct_values(self):
         """Two calls should return different values (high entropy)."""
