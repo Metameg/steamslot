@@ -268,18 +268,39 @@ this MVP scope.
 The first implementation slice (`docs/superpowers/plans/2026-07-16-backend-foundation.md`) is
 built, reviewed, and merged: project scaffold, the full 11-table schema/migration, the ledger
 service, Steam catalog seeding (24 real games), the odds/RNG engine, and the pack purchase/open
-service. No auth, HTTP endpoints, or Stripe integration yet. The whole-branch final review passed
-("Ready to merge: Yes") with two **Important findings explicitly scoped to the next plan** rather
-than defects in this slice — carry these into whichever plan adds the HTTP/auth layer:
+service. Its whole-branch review flagged two Important findings for the next plan — **both are now
+resolved**, see below.
 
-1. **No indexes on foreign-key columns**, notably `ledger_entries.user_id` — `get_balance` does a
-   sequential scan over the whole ledger on every read. Add indexes (and a
-   `CHECK (wallet_balance_cached >= 0)` backstop constraint) in a follow-up migration before any
-   real load.
-2. **`purchase_pack` has no row lock** (unlike `open_pack`'s `SELECT ... FOR UPDATE`). A genuine
-   concurrent double-submit with the same idempotency key raises an `IntegrityError` instead of
-   idempotently returning the pack, and — combined with the still-open "request-scoped rollback"
-   gap below — a caller that doesn't roll back on failure could leave an unpaid `Pack` row.
-   **Fix this in the very first task of the next plan**: build the FastAPI `get_db` dependency to
-   roll back the session on any unhandled exception *before* wiring `purchase_pack`/`open_pack` to
-   real routes — this closes both the rollback gap and the `purchase_pack` race at once.
+## Status: HTTP + Auth Layer Slice Complete
+
+The second implementation slice (`docs/superpowers/plans/2026-07-16-http-auth-layer.md`) is built,
+reviewed, and merged: request-scoped transaction management (`get_db` now commits on
+success/rolls back on exception — this resolves the foundation slice's finding #2 above, and
+`purchase_pack`'s missing row lock is no longer a partial-write risk since a failed purchase is now
+provably rolled back end-to-end, verified by a dedicated test that reproduces the real HTTP path
+against the real `get_db`); FK indexes on all 8 relevant columns plus a
+`CHECK (wallet_balance_cached >= 0)` backstop constraint (resolves finding #1 above); argon2
+password hashing + SHA256 session tokens; a revocable server-side `sessions` table; the auth
+service and HTTP API (signup/login/logout/me); and the wallet/packs HTTP API (balance, pack types,
+purchase, open, pull history) wiring the existing services, with idempotency keys now namespaced
+per-user. Still no Stripe, buyback/redeem/withdrawal, frontend, or admin UI.
+
+The whole-branch final review passed ("Ready to merge: Yes") with recommendations for whichever
+plan comes next:
+
+1. **Login timing side-channel (email enumeration)**: `auth_service.login` skips the (deliberately
+   slow) argon2 verify entirely when the email is unknown or the account has no password hash,
+   making that response measurably faster than a wrong-password response — a classic account-
+   existence oracle. Now that `/auth/login` is a real, unauthenticated, un-rate-limited endpoint on
+   a real-money app, this is live risk, not theoretical. Cheap fix: verify the supplied password
+   against a fixed dummy argon2 hash when the user is absent, discarding the result.
+2. **Rate limiting on `/auth/login` and `/auth/signup`** should be the first thing the next
+   security-facing slice adds — pair it with the timing-oracle fix above.
+3. **`sessions.user_id` has no index**, and nothing prunes expired/revoked sessions — fine at
+   current scale, but add the index and a prune job together whenever "revoke all sessions for a
+   user" or an admin session view is built.
+4. **`/packs/pulls` needs pagination** and should join `Game` instead of an N+1 `db.get` per pull,
+   before this endpoint sees real per-user history at scale.
+5. **CSRF posture confirmed acceptable as-is** (`SameSite=Lax` cookies + specific-origin CORS with
+   `allow_credentials=True`, no wildcard) — no separate CSRF token needed unless a future flow
+   requires `SameSite=None`.
