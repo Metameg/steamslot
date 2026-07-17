@@ -355,6 +355,26 @@ The two headline correctness checks: the **insufficient-balance-purchase-leaves-
 (Task 7) proves request-scoped rollback, and the **negative wallet CHECK** test (Task 2) proves the
 DB-level balance floor.
 
+**Correction discovered during Task 7 execution — the `client` fixture cannot prove this by
+itself.** The `client` fixture (Task 6) overrides `get_db` entirely with a bare
+`yield db_session` — no `try`/`except`/`rollback`. That's correct and necessary for its actual
+purpose (letting multiple requests in one test share state without ever committing for real), but
+it means **`get_db`'s own rollback-on-exception logic never runs** when a test goes through
+`client`. A test written exactly as this section originally implied — hit the purchase endpoint via
+`client`, then check for an orphaned `Pack` via `db_session` — is not a rollback proof at all: since
+`client`'s override never commits *or* rolls back, an uncommitted `Pack` flush is invisible to an
+independent connection regardless of whether real rollback works, so the test would pass even if
+`get_db`'s rollback were silently broken.
+
+The correct pattern (what Task 7 actually built, and what any future test needing to prove
+rollback-through-the-HTTP-layer must use): bypass `client`, monkeypatch `app.db.SessionLocal` onto
+a test-database sessionmaker (the exact `patched_session_local` technique from Task 1's
+`test_db_transaction.py`), drive a plain `TestClient(app)` so the real, unmodified `get_db` runs
+end-to-end, then verify via `session_factory()` — a genuinely independent connection — after the
+request has fully completed. Task 7 validated this new test isn't vacuous with a real negative
+control (temporarily monkeypatching `Session.rollback` to call `commit()` instead, confirming the
+test then fails) before trusting it.
+
 ## Out of Scope (later slices)
 
 - Stripe deposits / Payments / webhooks / `stripe_events` processing (money-in).
