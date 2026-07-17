@@ -5,7 +5,7 @@ from app.config import get_settings
 EXPECTED_TABLES = {
     "users", "ledger_entries", "games", "pack_types", "odds_tables",
     "odds_bands", "packs", "pulls", "redemption_requests", "withdrawals",
-    "stripe_events",
+    "stripe_events", "sessions",
 }
 
 
