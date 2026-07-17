@@ -304,3 +304,24 @@ plan comes next:
 5. **CSRF posture confirmed acceptable as-is** (`SameSite=Lax` cookies + specific-origin CORS with
    `allow_credentials=True`, no wildcard) — no separate CSRF token needed unless a future flow
    requires `SameSite=None`.
+
+## Status: Rate Limiting + Login Timing-Oracle Fix Slice Complete
+
+The third implementation slice (`docs/superpowers/plans/2026-07-17-rate-limiting.md`) is built,
+reviewed, and merged: **resolves findings #1 and #2 above**. Redis-backed rate limiting (via the
+`limits` library used directly, in-process `memory://` for tests — no live Redis needed to run the
+suite) on `/auth/login` (per-IP AND per-email, either can 429), `/auth/signup` (per-IP), and
+`/packs/purchase`/`/packs/{id}/open` (per-user); and the login timing-oracle fix (the
+unknown-email/null-password-hash path now burns an equivalent argon2 verify against a dummy hash
+before rejecting, closing the email-enumeration timing side-channel). No account lockout/backoff,
+CAPTCHA, global/read-endpoint limiting, or Stripe work in this slice.
+
+The whole-branch final review passed ("Ready to merge: Yes"), no Critical or Important findings.
+One recommendation carried forward:
+
+1. **Per-IP limiting doesn't do its intended job behind a reverse proxy yet.** `client_ip()` reads
+   the direct socket address; behind a proxy in a real deploy, every request appears to come from
+   the proxy's IP, so per-IP limiting degrades to one global bucket shared by all users. This is a
+   documented, accepted MVP limitation (no reverse-proxy deploy target exists yet), but should be
+   the next security follow-up — add `X-Forwarded-For` handling gated by a trusted-proxy setting —
+   once a real deploy target does exist.
