@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     )
     steam_api_base: str = "https://store.steampowered.com/api"
     session_ttl_days: int = 30
+    session_cookie_name: str = "steamslot_session"
+    cookie_secure: bool = False
+    cors_allow_origins: list[str] = ["http://localhost:5173"]
 
 
 @lru_cache

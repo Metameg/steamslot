@@ -1,8 +1,11 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import get_settings
+from app.db import get_db
+from app.main import app
 
 
 @pytest.fixture(scope="session")
@@ -23,6 +26,24 @@ def db_session(engine):
     session.close()
     trans.rollback()
     connection.close()
+
+
+@pytest.fixture()
+def client(db_session):
+    """A TestClient whose every request runs against the SAME savepoint-scoped
+    db_session, with the real (committing) get_db overridden out. This lets one test
+    issue multiple requests that see each other's writes, without any request ever
+    performing a real commit -- the db_session fixture's rollback (on teardown) is what
+    undoes everything, so nothing persists past the test. Do NOT commit/close the
+    session here: db_session fixture owns that."""
+
+    def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.fixture()
