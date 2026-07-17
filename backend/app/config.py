@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cors_allow_origins: list[str] = ["http://localhost:5173"]
     rate_limit_storage_uri: str = "memory://"
+    # Ops kill-switch. Read via the lru_cache'd get_settings(), so flipping this env var
+    # requires a process restart to take effect -- not a runtime/hot toggle.
     rate_limit_enabled: bool = True
 
 
