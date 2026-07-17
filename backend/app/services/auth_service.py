@@ -12,6 +12,8 @@ from app.security.tokens import generate_session_token, hash_token
 
 SESSION_TTL = timedelta(days=get_settings().session_ttl_days)
 
+_DUMMY_PASSWORD_HASH = hash_password("timing-equalization-placeholder")
+
 
 class EmailAlreadyExistsError(Exception):
     pass
@@ -59,7 +61,10 @@ def signup(
 
 def login(db: Session, *, email: str, password: str) -> tuple[User, str]:
     user = db.scalar(select(User).where(User.email == email))
-    if user is None or user.password_hash is None or not verify_password(password, user.password_hash):
+    if user is None or user.password_hash is None:
+        verify_password(password, _DUMMY_PASSWORD_HASH)  # burn ~equal time; result ignored
+        raise InvalidCredentialsError
+    if not verify_password(password, user.password_hash):
         raise InvalidCredentialsError
 
     token = generate_session_token()

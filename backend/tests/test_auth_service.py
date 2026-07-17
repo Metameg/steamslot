@@ -7,6 +7,7 @@ from app.models import Session as SessionModel
 from app.models import User
 from app.models.base import utcnow
 from app.security.tokens import hash_token
+from app.services import auth_service
 from app.services.auth_service import (
     AgeNotAttestedError,
     EmailAlreadyExistsError,
@@ -103,6 +104,36 @@ def test_login_raises_invalid_credentials_on_wrong_password(db_session):
 def test_login_raises_invalid_credentials_on_unknown_email(db_session):
     with pytest.raises(InvalidCredentialsError):
         login(db_session, email="doesnotexist@example.com", password="whatever")
+
+
+def test_login_unknown_email_still_calls_verify_password(db_session, mocker):
+    spy = mocker.spy(auth_service, "verify_password")
+
+    with pytest.raises(InvalidCredentialsError):
+        login(db_session, email="doesnotexist@example.com", password="whatever")
+
+    assert spy.called
+    assert spy.call_args.args[1] == auth_service._DUMMY_PASSWORD_HASH
+
+
+def test_login_raises_invalid_credentials_on_null_password_hash(db_session, mocker):
+    user = User(
+        email="oauthonly@example.com",
+        password_hash=None,
+        display_name="OAuth Only",
+        age_attested=True,
+        terms_accepted_at=utcnow(),
+    )
+    db_session.add(user)
+    db_session.flush()
+
+    spy = mocker.spy(auth_service, "verify_password")
+
+    with pytest.raises(InvalidCredentialsError):
+        login(db_session, email="oauthonly@example.com", password="whatever")
+
+    assert spy.called
+    assert spy.call_args.args[1] == auth_service._DUMMY_PASSWORD_HASH
 
 
 def test_authenticate_returns_user_for_valid_token(db_session):
