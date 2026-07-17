@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     session_cookie_name: str = "steamslot_session"
     cookie_secure: bool = False
     cors_allow_origins: list[str] = ["http://localhost:5173"]
+    rate_limit_storage_uri: str = "memory://"
+    rate_limit_enabled: bool = True
 
 
 @lru_cache

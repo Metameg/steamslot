@@ -8,6 +8,14 @@ from app.db import get_db
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    from app import rate_limit
+
+    rate_limit.reset()
+    yield
+
+
 @pytest.fixture(scope="session")
 def engine():
     settings = get_settings()
