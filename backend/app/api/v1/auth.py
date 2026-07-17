@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app import rate_limit
 from app.api.deps import get_current_user, get_db, get_session_token
 from app.config import get_settings
 from app.models import User
@@ -10,7 +11,16 @@ from app.services import auth_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def _limit_signup_ip(request: Request) -> None:
+    rate_limit.enforce(rate_limit.SIGNUP_IP, "signup-ip", rate_limit.client_ip(request))
+
+
+@router.post(
+    "/signup",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_limit_signup_ip)],
+)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> User:
     return auth_service.signup(
         db,
@@ -23,7 +33,9 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> User:
 
 
 @router.post("/login", response_model=UserResponse)
-def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)) -> User:
+def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> User:
+    rate_limit.enforce(rate_limit.LOGIN_IP, "login-ip", rate_limit.client_ip(request))
+    rate_limit.enforce(rate_limit.LOGIN_EMAIL, "login-email", payload.email.lower())
     settings = get_settings()
     user, token = auth_service.login(db, email=payload.email, password=payload.password)
     response.set_cookie(
